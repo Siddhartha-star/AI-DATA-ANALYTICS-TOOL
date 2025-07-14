@@ -12,6 +12,7 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
+# ✅ Load Together AI API key securely
 TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
 TOGETHER_MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 
@@ -71,8 +72,7 @@ Data Preview:
             "prompt": prompt,
             "max_tokens": 512,
             "temperature": 0.7,
-            "top_p": 0.9,
-            "stop": None
+            "top_p": 0.9
         }
 
         response = requests.post("https://api.together.xyz/v1/completions", json=payload, headers=headers)
@@ -96,9 +96,11 @@ Data Preview:
         print("[ERROR]", str(e))
         return jsonify({"error": str(e)}), 500
 
+# ---------- Root Route ----------
 @app.route('/')
 def home():
     return "✅ Krishna AI Backend with Together API is Running"
 
+# ---------- Entry Point ----------
 if __name__ == '__main__':
     app.run(debug=True)
