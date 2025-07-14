@@ -1,186 +1,130 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const fileUpload = document.getElementById('fileUpload');
-    const fileUploadLabel = document.getElementById('fileUploadLabel');
-    const uploadStatus = document.getElementById('uploadStatus');
-    const cleanBtn = document.getElementById('cleanBtn');
-    const cleanStatus = document.getElementById('cleanStatus');
-    const queryInput = document.getElementById('queryInput');
-    const submitQueryBtn = document.getElementById('submitQueryBtn');
-    const analysisStatus = document.getElementById('analysisStatus');
-    const resultsSection = document.getElementById('resultsSection');
-    const textResult = document.getElementById('textResult');
-    const chartResult = document.getElementById('chartResult');
-    const downloadBtn = document.getElementById('downloadBtn');
+const BASE_URL = "https://ai-data-analytics-tool.onrender.com";
 
-    let uploadedFile = null;
-    let latestResult = "";
+// Sidebar Toggle
+document.getElementById("sidebar-toggle").addEventListener("click", () => {
+    const sidebar = document.getElementById("sidebar");
+    const logo = document.getElementById("sidebar-logo");
+    const texts = document.querySelectorAll(".sidebar-link-text, #user-info");
+    sidebar.classList.toggle("w-64");
+    logo.classList.toggle("opacity-0");
+    texts.forEach(el => el.classList.toggle("opacity-0"));
+});
 
-    const showLoader = (element, message) => {
-        element.innerHTML = `
-            <div class="flex items-center justify-center text-yellow-400">
-                <div class="loader mr-3" style="width: 20px; height: 20px; border-width: 2px;"></div>
-                <span>${message}</span>
-            </div>`;
-    };
-
-    const showSuccess = (element, message) => {
-        element.innerHTML = `
-            <div class="flex items-center justify-center text-green-400 fade-in">
-                <i class="fas fa-check-circle mr-2"></i>
-                <span>${message}</span>
-            </div>`;
-    };
-
-    const showError = (element, message) => {
-        element.innerHTML = `
-            <div class="flex items-center justify-center text-red-400 fade-in">
-                <i class="fas fa-exclamation-triangle mr-2"></i>
-                <span>${message}</span>
-            </div>`;
-    };
-
-    const activateCard = (cardId) => {
-        const cards = ['uploadCard', 'cleanCard', 'chatCard'];
-        cards.forEach(id => {
-            const card = document.getElementById(id);
-            const stepNumber = card.querySelector('.font-bold');
-            if (id === cardId) {
-                card.classList.add('active');
-                card.classList.remove('opacity-50', 'pointer-events-none');
-                stepNumber.classList.replace('bg-gray-600', 'bg-indigo-500');
-            } else if (card.classList.contains('active')) {
-                stepNumber.classList.replace('bg-indigo-500', 'bg-green-500');
-            }
-        });
-    };
-
-    fileUploadLabel.addEventListener('dragover', (e) => {
+// Navigation
+document.querySelectorAll(".nav-link").forEach(link => {
+    link.addEventListener("click", e => {
         e.preventDefault();
-        fileUploadLabel.classList.add('dragover');
+        document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active-link"));
+        link.classList.add("active-link");
+
+        document.querySelectorAll(".page-content").forEach(page => page.classList.add("hidden"));
+        const pageId = link.getAttribute("data-page");
+        document.getElementById(pageId).classList.remove("hidden");
     });
+});
 
-    fileUploadLabel.addEventListener('dragleave', () => {
-        fileUploadLabel.classList.remove('dragover');
+// File Upload
+const fileUpload = document.getElementById("fileUpload");
+const fileLabel = document.getElementById("fileUploadLabel");
+const uploadStatus = document.getElementById("uploadStatus");
+const cleanCard = document.getElementById("cleanCard");
+const chatCard = document.getElementById("chatCard");
+
+fileLabel.addEventListener("dragover", e => {
+    e.preventDefault();
+    fileLabel.classList.add("dragover");
+});
+fileLabel.addEventListener("dragleave", () => fileLabel.classList.remove("dragover"));
+fileLabel.addEventListener("drop", e => {
+    e.preventDefault();
+    fileUpload.files = e.dataTransfer.files;
+    fileLabel.classList.remove("dragover");
+    handleFileUpload();
+});
+fileUpload.addEventListener("change", handleFileUpload);
+
+function handleFileUpload() {
+    const file = fileUpload.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    uploadStatus.innerHTML = `<div class="loader mx-auto my-4"></div>`;
+
+    fetch(`${BASE_URL}/preview`, {
+        method: "POST",
+        body: formData,
+    })
+    .then(res => res.json())
+    .then(data => {
+        uploadStatus.innerHTML = `<p class="text-green-400 font-semibold">File uploaded and preview generated!</p>
+        <p class="text-sm text-gray-400">Rows: ${data.rows}</p>
+        <p class="text-sm text-gray-400 mb-2">Columns: ${data.columns}</p>
+        <pre class="text-sm bg-gray-900 p-3 rounded-md mt-2 overflow-auto max-h-48">${data.preview}</pre>`;
+        cleanCard.classList.remove("opacity-50", "pointer-events-none");
+    })
+    .catch(() => {
+        uploadStatus.innerHTML = `<p class="text-red-500 font-semibold">Upload failed. Try again.</p>`;
     });
+}
 
-    fileUploadLabel.addEventListener('drop', (e) => {
-        e.preventDefault();
-        fileUploadLabel.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            fileUpload.files = files;
-            handleFileUpload();
-        }
+// Auto Clean
+document.getElementById("cleanBtn").addEventListener("click", () => {
+    const cleanStatus = document.getElementById("cleanStatus");
+    cleanStatus.innerHTML = `<div class="loader mx-auto my-4"></div>`;
+
+    fetch(`${BASE_URL}/clean`, { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+        cleanStatus.innerHTML = `<p class="text-green-400 font-semibold">${data.message}</p>`;
+        chatCard.classList.remove("opacity-50", "pointer-events-none");
+    })
+    .catch(() => {
+        cleanStatus.innerHTML = `<p class="text-red-500 font-semibold">Auto clean failed. Try again.</p>`;
     });
+});
 
-    fileUpload.addEventListener('change', handleFileUpload);
+// Submit Query
+document.getElementById("submitQueryBtn").addEventListener("click", () => {
+    const input = document.getElementById("queryInput").value.trim();
+    const analysisStatus = document.getElementById("analysisStatus");
+    const output = document.getElementById("output");
+    const textResult = document.getElementById("textResult");
+    const chartResult = document.getElementById("chartResult");
+    const chartTitle = document.getElementById("chartTitle");
 
-    function handleFileUpload() {
-        uploadedFile = fileUpload.files[0];
-        if (!uploadedFile) return;
+    if (!input) return alert("Enter a query!");
 
-        showLoader(uploadStatus, `Uploading ${uploadedFile.name}...`);
+    analysisStatus.innerHTML = `<div class="loader mx-auto my-4"></div>`;
 
-        const formData = new FormData();
-        formData.append('file', uploadedFile);
+    fetch(`${BASE_URL}/query`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: input })
+    })
+    .then(res => res.json())
+    .then(data => {
+        analysisStatus.innerHTML = "";
+        document.getElementById("resultsSection").classList.remove("hidden");
+        textResult.innerText = data.text;
 
-        fetch('https://ai-data-analytics-tool.onrender.com/preview', {
-            method: 'POST',
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                showError(uploadStatus, data.error);
-                return;
-            }
-
-            showSuccess(uploadStatus, 'File uploaded and preview generated!');
-            uploadStatus.innerHTML += `
-                <div class="mt-4 p-4 bg-gray-900 text-left rounded-lg fade-in">
-                    <p><strong>Rows:</strong> ${data.rows}</p>
-                    <p><strong>Columns:</strong> ${data.columns}</p>
-                    <pre class="mt-2 p-2 bg-black text-gray-300 rounded text-xs">${data.preview}</pre>
-                </div>`;
-            activateCard('cleanCard');
-        })
-        .catch(err => showError(uploadStatus, err.message));
-    }
-
-    cleanBtn.addEventListener('click', () => {
-        if (!uploadedFile) return;
-        showLoader(cleanStatus, 'Cleaning data...');
-
-        const formData = new FormData();
-        formData.append('file', uploadedFile);
-
-        fetch('https://ai-data-analytics-tool.onrender.com/clean', {
-            method: 'POST',
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                showError(cleanStatus, data.error);
-                return;
-            }
-
-            showSuccess(cleanStatus, data.message);
-            activateCard('chatCard');
-        })
-        .catch(err => showError(cleanStatus, err.message));
-    });
-
-    submitQueryBtn.addEventListener('click', () => {
-        const query = queryInput.value.trim();
-        if (!query || !uploadedFile) {
-            showError(analysisStatus, 'Please upload a file and enter your query.');
-            return;
+        if (data.chart) {
+            chartTitle.innerText = data.chart.title;
+            Plotly.newPlot("chartResult", data.chart.data, data.chart.layout);
+        } else {
+            chartTitle.innerText = "";
+            chartResult.innerHTML = "<p class='text-gray-400'>No chart available for this query.</p>";
         }
 
-        showLoader(analysisStatus, 'Analyzing your query...');
-        resultsSection.classList.add('hidden');
-        textResult.innerHTML = '';
-        chartResult.innerHTML = '';
-        downloadBtn.classList.add('hidden');
-
-        const formData = new FormData();
-        formData.append('file', uploadedFile);
-        formData.append('query', query);
-
-        fetch('https://ai-data-analytics-tool.onrender.com/query', {
-            method: 'POST',
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                showError(analysisStatus, data.error);
-                return;
-            }
-
-            showSuccess(analysisStatus, 'Analysis complete!');
-            latestResult = data.result;
-            textResult.innerHTML = `<pre class="whitespace-pre-wrap text-gray-300">${data.result}</pre>`;
-            if (data.chart) {
-                chartResult.innerHTML = data.chart;
-            }
-            resultsSection.classList.remove('hidden');
-            downloadBtn.classList.remove('hidden');
-        })
-        .catch(err => showError(analysisStatus, err.message));
+        document.getElementById("downloadBtn").classList.remove("hidden");
+    })
+    .catch(() => {
+        analysisStatus.innerHTML = `<p class="text-red-500 font-semibold">Query failed. Try again.</p>`;
     });
+});
 
-    downloadBtn.addEventListener('click', () => {
-        if (!latestResult) return;
-        const blob = new Blob([latestResult], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'krishna_ai_analysis.txt';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    });
+// Download
+document.getElementById("downloadBtn").addEventListener("click", () => {
+    window.open(`${BASE_URL}/download`, "_blank");
 });
