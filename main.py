@@ -11,7 +11,7 @@ DATA_FILE = "uploaded_data.csv"
 
 @app.route("/")
 def index():
-    return "✅ Krishna AI Backend with Together API is Running"
+    return "✅ InsightFlow AI Backend with Together API is Running"
 
 @app.route("/preview", methods=["POST"])
 def preview_data():
