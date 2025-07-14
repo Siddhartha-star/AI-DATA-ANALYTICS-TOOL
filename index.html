@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Krishna AI | Intelligent Data Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1c23; /* Dark background */
+        }
+        .step-card {
+            background-color: #242731;
+            border: 1px solid #363a4f;
+            transition: all 0.3s ease-in-out;
+        }
+        .step-card.active {
+            border-color: #4f46e5;
+            box-shadow: 0 0 15px rgba(79, 70, 229, 0.5);
+        }
+        .btn-primary {
+            background-color: #4f46e5;
+            transition: background-color 0.3s;
+        }
+        .btn-primary:hover {
+            background-color: #4338ca;
+        }
+        .btn-secondary {
+            background-color: #f59e0b;
+        }
+        .btn-secondary:hover {
+            background-color: #d97706;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        #fileUploadLabel {
+            border: 2px dashed #4a5568;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        #fileUploadLabel.dragover {
+             border-color: #4f46e5;
+             background-color: #2d3748;
+        }
+        /* Sidebar transitions */
+        #sidebar, #main-content {
+            transition: all 0.3s ease-in-out;
+        }
+        .sidebar-link-text, #sidebar-logo, #user-info {
+            transition: opacity 0.2s ease-in-out;
+        }
+        .active-link {
+            background-color: #4f46e5;
+        }
+    </style>
+</head>
+<body class="text-gray-200">
+    <div id="app-container" class="flex">
+        <!-- Collapsible Sidebar -->
+        <aside id="sidebar" class="bg-[#1e2129] text-white h-screen p-4 flex flex-col justify-between fixed top-0 left-0 z-40 w-20">
+            <div>
+                <!-- Logo and Toggle Button -->
+                <div class="flex items-center justify-between mb-10 h-12">
+                    <h1 class="text-2xl font-bold text-white transition-opacity duration-300 opacity-0" id="sidebar-logo">Krishna AI</h1>
+                    <button id="sidebar-toggle" class="p-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 w-full flex justify-center">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+
+                <!-- Navigation -->
+                <nav>
+                    <ul>
+                        <li>
+                            <a href="#" data-page="dashboard-page" class="nav-link flex items-center py-3 px-4 rounded-lg hover:bg-indigo-600 active-link">
+                                <i class="fas fa-tachometer-alt w-6 text-center"></i>
+                                <span class="ml-4 sidebar-link-text opacity-0">Dashboard</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" data-page="data-preview-page" class="nav-link flex items-center py-3 px-4 rounded-lg hover:bg-indigo-600">
+                                <i class="fas fa-table w-6 text-center"></i>
+                                <span class="ml-4 sidebar-link-text opacity-0">Data Preview</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" data-page="about-page" class="nav-link flex items-center py-3 px-4 rounded-lg hover:bg-indigo-600">
+                                <i class="fas fa-info-circle w-6 text-center"></i>
+                                <span class="ml-4 sidebar-link-text opacity-0">About</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            
+            <!-- User Profile -->
+            <div class="border-t border-gray-700 pt-4">
+                <a href="#" class="flex items-center p-2 rounded-lg hover:bg-gray-700">
+                    <img src="https://i.pravatar.cc/40" alt="User Avatar" class="rounded-full w-10 h-10">
+                    <div id="user-info" class="ml-3 opacity-0">
+                       <p class="font-semibold sidebar-link-text">User Name</p>
+                    </div>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="main-content" class="flex-1 transition-all duration-300 ml-20">
+            <div id="dashboard-page" class="page-content min-h-screen flex flex-col items-center justify-center p-4">
+                <header class="text-center mb-10">
+                    <h1 class="text-5xl font-bold text-white tracking-tight">Data Agent</h1>
+                    <p class="text-lg text-gray-400 mt-2">Your intelligent assistant for seamless data analysis.</p>
+                </header>
+                
+                <div class="w-full max-w-4xl space-y-8">
+                    <!-- Step 1: Upload -->
+                    <div id="uploadCard" class="step-card p-6 rounded-lg active">
+                        <div class="flex items-center mb-4"><div class="bg-indigo-500 text-white rounded-full h-8 w-8 flex items-center justify-center font-bold">1</div><h2 class="text-2xl font-semibold ml-4">Upload Your Data</h2></div>
+                        <input type="file" id="fileUpload" accept=".csv,.xlsx" class="hidden"><label for="fileUpload" id="fileUploadLabel" class="block rounded-lg hover:bg-gray-700"><i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i><p class="font-semibold">Click to browse or drag & drop</p><p class="text-sm text-gray-500">Supports CSV and XLSX files</p></label>
+                        <div id="uploadStatus" class="mt-4"></div>
+                    </div>
+                    <!-- Step 2: Clean Data -->
+                    <div id="cleanCard" class="step-card p-6 rounded-lg opacity-50 pointer-events-none">
+                        <div class="flex items-center mb-4"><div class="bg-gray-600 text-white rounded-full h-8 w-8 flex items-center justify-center font-bold">2</div><h2 class="text-2xl font-semibold ml-4">Clean Missing Data</h2></div>
+                        <button id="cleanBtn" class="btn-secondary text-white font-bold py-2 px-4 rounded-lg w-full"><i class="fas fa-magic mr-2"></i>Auto-clean Data</button>
+                        <div id="cleanStatus" class="mt-4 text-center"></div>
+                    </div>
+                    <!-- Step 3: Analyze -->
+                    <div id="chatCard" class="step-card p-6 rounded-lg opacity-50 pointer-events-none">
+                        <div class="flex items-center mb-4"><div class="bg-gray-600 text-white rounded-full h-8 w-8 flex items-center justify-center font-bold">3</div><h2 class="text-2xl font-semibold ml-4">Ask Your Query</h2></div>
+                        <textarea id="queryInput" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition" rows="4" placeholder="e.g., Show top 5 products by sales and visualize as a bar chart"></textarea>
+                        <button id="submitQueryBtn" class="btn-primary text-white font-bold py-2 px-4 rounded-lg mt-3 w-full"><i class="fas fa-paper-plane mr-2"></i>Submit for Analysis</button>
+                        <div id="analysisStatus" class="mt-4"></div>
+                    </div>
+                    <!-- Results Section -->
+                    <div id="resultsSection" class="hidden fade-in">
+                         <div class="step-card p-6 rounded-lg">
+                            <h2 class="text-2xl font-semibold mb-4 text-white">Analysis Dashboard</h2>
+                            <div id="output" class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                                <div class="lg:col-span-2 bg-gray-800/50 p-4 rounded-lg border border-gray-700"><h3 class="font-semibold text-lg mb-3 text-indigo-300 border-b border-gray-600 pb-2">Key Insights</h3><div id="textResult" class="mt-3"></div></div>
+                                <div class="lg:col-span-3 bg-gray-800/50 p-4 rounded-lg border border-gray-700 flex flex-col"><h3 id="chartTitle" class="font-semibold text-lg text-indigo-300 text-center"></h3><div id="chartResult" class="flex-grow min-h-[400px]"></div></div>
+                            </div>
+                            <div class="text-center"><button id="downloadBtn" class="hidden mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg"><i class="fas fa-download mr-2"></i>Download Insights</button></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="data-preview-page" class="page-content hidden min-h-screen flex flex-col items-center justify-center p-4">
+                <h1 class="text-4xl font-bold">Data Preview</h1>
+                <p class="text-lg mt-2 text-gray-400">The data preview from your uploaded file will appear here.</p>
+            </div>
+            
+            <div id="about-page" class="page-content hidden min-h-screen flex flex-col items-center justify-center p-4">
+                <h1 class="text-4xl font-bold">About Krishna AI</h1>
+                <p class="text-lg mt-2 text-gray-400 max-w-2xl text-center">Krishna AI is an intelligent data analysis agent designed to streamline your workflow. Upload your data, ask questions in natural language, and get instant insights and visualizations.</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
