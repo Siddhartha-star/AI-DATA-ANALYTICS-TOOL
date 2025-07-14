@@ -1,106 +1,71 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-from dotenv import load_dotenv
-import os
 import pandas as pd
-import requests
-import plotly.express as px
-
-# Load environment variables
-load_dotenv()
+import io
+import os
 
 app = Flask(__name__)
 CORS(app)
 
-# ✅ Load Together AI API key securely
-TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
-TOGETHER_MODEL = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+DATA_FILE = "uploaded_data.csv"
 
-# ---------- ROUTE: Preview Data ----------
-@app.route('/preview', methods=['POST'])
-def preview():
-    file = request.files.get("file")
-    if not file:
-        return jsonify({"error": "No file uploaded"})
-    df = pd.read_csv(file) if file.filename.endswith('.csv') else pd.read_excel(file)
-    return jsonify({
-        "rows": df.shape[0],
-        "columns": df.shape[1],
-        "preview": df.head().to_string(index=False)
-    })
-
-# ---------- ROUTE: Clean Data ----------
-@app.route('/clean', methods=['POST'])
-def clean():
-    file = request.files.get("file")
-    if not file:
-        return jsonify({"error": "No file"})
-    df = pd.read_csv(file) if file.filename.endswith('.csv') else pd.read_excel(file)
-    cleaned = df.dropna()
-    return jsonify({
-        "message": f"Missing values removed. Cleaned data has {cleaned.shape[0]} rows and {cleaned.shape[1]} columns."
-    })
-
-# ---------- ROUTE: AI Analysis ----------
-@app.route('/query', methods=['POST'])
-def query_data():
-    try:
-        file = request.files.get("file")
-        query = request.form.get("query")
-        if not file or not query:
-            return jsonify({"error": "Missing file or query"}), 400
-
-        df = pd.read_csv(file) if file.filename.endswith('.csv') else pd.read_excel(file)
-        preview_data = df.head(25).to_csv(index=False)
-
-        prompt = f"""You are a data analyst. Analyze the following dataset preview and respond to the user's query.
-
-User's Query: {query}
-
-Data Preview:
-{preview_data}
-"""
-
-        # Send to Together AI
-        headers = {
-            "Authorization": f"Bearer {TOGETHER_API_KEY}",
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "model": TOGETHER_MODEL,
-            "prompt": prompt,
-            "max_tokens": 512,
-            "temperature": 0.7,
-            "top_p": 0.9
-        }
-
-        response = requests.post("https://api.together.xyz/v1/completions", json=payload, headers=headers)
-        result = response.json()
-        summary = result.get("choices", [{}])[0].get("text", "").strip()
-
-        chart_html = None
-        if "bar chart" in summary.lower() and len(df.columns) >= 2:
-            fig = px.bar(df, x=df.columns[0], y=df.columns[1])
-            chart_html = fig.to_html(full_html=False)
-        elif "pie chart" in summary.lower() and len(df.columns) >= 2:
-            fig = px.pie(df, names=df.columns[0], values=df.columns[1])
-            chart_html = fig.to_html(full_html=False)
-        elif "line chart" in summary.lower() and len(df.columns) >= 2:
-            fig = px.line(df, x=df.columns[0], y=df.columns[1])
-            chart_html = fig.to_html(full_html=False)
-
-        return jsonify({"result": summary, "chart": chart_html})
-
-    except Exception as e:
-        print("[ERROR]", str(e))
-        return jsonify({"error": str(e)}), 500
-
-# ---------- Root Route ----------
-@app.route('/')
-def home():
+@app.route("/")
+def index():
     return "✅ Krishna AI Backend with Together API is Running"
 
-# ---------- Entry Point ----------
-if __name__ == '__main__':
-    app.run(debug=True)
+@app.route("/preview", methods=["POST"])
+def preview_data():
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    df = pd.read_csv(file)
+    df.to_csv(DATA_FILE, index=False)
+
+    preview_text = df.head().to_string()
+    return jsonify({
+        "preview": preview_text,
+        "rows": df.shape[0],
+        "columns": df.shape[1]
+    })
+
+@app.route("/clean", methods=["POST"])
+def clean_data():
+    if not os.path.exists(DATA_FILE):
+        return jsonify({"error": "No uploaded file found"}), 400
+
+    df = pd.read_csv(DATA_FILE)
+    df.fillna("NaN", inplace=True)
+    df.to_csv(DATA_FILE, index=False)
+
+    return jsonify({"message": "Missing data filled successfully!"})
+
+@app.route("/query", methods=["POST"])
+def handle_query():
+    data = request.json
+    query = data.get("query", "")
+
+    # Dummy response for testing (replace with LLM logic)
+    response_text = f"Your query was: '{query}'."
+    dummy_chart = {
+        "title": "Dummy Bar Chart",
+        "data": [{
+            "x": ["A", "B", "C"],
+            "y": [10, 20, 15],
+            "type": "bar"
+        }],
+        "layout": {
+            "title": "Dummy Chart Example"
+        }
+    }
+
+    return jsonify({
+        "text": response_text,
+        "chart": dummy_chart
+    })
+
+@app.route("/download", methods=["GET"])
+def download_file():
+    if not os.path.exists(DATA_FILE):
+        return "File not found", 404
+    return send_file(DATA_FILE, as_attachment=True)
