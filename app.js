@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', () => {
     const BASE_URL = "https://ai-data-analytics-tool.onrender.com";
 
