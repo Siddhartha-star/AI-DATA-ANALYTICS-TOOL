@@ -1,6 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const BASE_URL = "https://ai-data-analytics-tool.onrender.com";
-
     const fileUpload = document.getElementById('fileUpload');
     const fileUploadLabel = document.getElementById('fileUploadLabel');
     const uploadStatus = document.getElementById('uploadStatus');
@@ -10,22 +8,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitQueryBtn = document.getElementById('submitQueryBtn');
     const analysisStatus = document.getElementById('analysisStatus');
     const resultsSection = document.getElementById('resultsSection');
-    const outputDiv = document.getElementById('output');
+    const textResult = document.getElementById('textResult');
+    const chartResult = document.getElementById('chartResult');
     const downloadBtn = document.getElementById('downloadBtn');
 
     let uploadedFile = null;
     let latestResult = "";
 
     const showLoader = (element, message) => {
-        element.innerHTML = `<div class="text-yellow-400">${message}</div>`;
+        element.innerHTML = `
+            <div class="flex items-center justify-center text-yellow-400">
+                <div class="loader mr-3" style="width: 20px; height: 20px; border-width: 2px;"></div>
+                <span>${message}</span>
+            </div>`;
     };
 
     const showSuccess = (element, message) => {
-        element.innerHTML = `<div class="text-green-400">${message}</div>`;
+        element.innerHTML = `
+            <div class="flex items-center justify-center text-green-400 fade-in">
+                <i class="fas fa-check-circle mr-2"></i>
+                <span>${message}</span>
+            </div>`;
     };
 
     const showError = (element, message) => {
-        element.innerHTML = `<div class="text-red-400">${message}</div>`;
+        element.innerHTML = `
+            <div class="flex items-center justify-center text-red-400 fade-in">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <span>${message}</span>
+            </div>`;
     };
 
     const activateCard = (cardId) => {
@@ -35,12 +46,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const stepNumber = card.querySelector('.font-bold');
             if (id === cardId) {
                 card.classList.add('active');
+                card.classList.remove('opacity-50', 'pointer-events-none');
                 stepNumber.classList.replace('bg-gray-600', 'bg-indigo-500');
-            } else {
+            } else if (card.classList.contains('active')) {
                 stepNumber.classList.replace('bg-indigo-500', 'bg-green-500');
             }
         });
     };
+
+    fileUploadLabel.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileUploadLabel.classList.add('dragover');
+    });
+
+    fileUploadLabel.addEventListener('dragleave', () => {
+        fileUploadLabel.classList.remove('dragover');
+    });
+
+    fileUploadLabel.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileUploadLabel.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileUpload.files = files;
+            handleFileUpload();
+        }
+    });
 
     fileUpload.addEventListener('change', handleFileUpload);
 
@@ -49,84 +80,95 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!uploadedFile) return;
 
         showLoader(uploadStatus, `Uploading ${uploadedFile.name}...`);
-        const formData = new FormData();
-        formData.append("file", uploadedFile);
 
-        fetch(`${BASE_URL}/preview`, {
-            method: "POST",
+        const formData = new FormData();
+        formData.append('file', uploadedFile);
+
+        fetch('https://ai-data-analytics-tool.onrender.com/preview', {
+            method: 'POST',
             body: formData
         })
         .then(res => res.json())
         .then(data => {
+            if (data.error) {
+                showError(uploadStatus, data.error);
+                return;
+            }
+
             showSuccess(uploadStatus, 'File uploaded and preview generated!');
             uploadStatus.innerHTML += `
                 <div class="mt-4 p-4 bg-gray-900 text-left rounded-lg fade-in">
                     <p><strong>Rows:</strong> ${data.rows}</p>
                     <p><strong>Columns:</strong> ${data.columns}</p>
                     <pre class="mt-2 p-2 bg-black text-gray-300 rounded text-xs">${data.preview}</pre>
-                </div>
-            `;
+                </div>`;
             activateCard('cleanCard');
         })
-        .catch(() => showError(uploadStatus, 'Failed to upload file.'));
+        .catch(err => showError(uploadStatus, err.message));
     }
 
     cleanBtn.addEventListener('click', () => {
         if (!uploadedFile) return;
         showLoader(cleanStatus, 'Cleaning data...');
-        const formData = new FormData();
-        formData.append("file", uploadedFile);
 
-        fetch(`${BASE_URL}/clean`, {
-            method: "POST",
+        const formData = new FormData();
+        formData.append('file', uploadedFile);
+
+        fetch('https://ai-data-analytics-tool.onrender.com/clean', {
+            method: 'POST',
             body: formData
         })
         .then(res => res.json())
         .then(data => {
-            showSuccess(cleanStatus, data.message || 'Data cleaned successfully!');
+            if (data.error) {
+                showError(cleanStatus, data.error);
+                return;
+            }
+
+            showSuccess(cleanStatus, data.message);
             activateCard('chatCard');
         })
-        .catch(() => showError(cleanStatus, 'Failed to clean data.'));
+        .catch(err => showError(cleanStatus, err.message));
     });
 
     submitQueryBtn.addEventListener('click', () => {
         const query = queryInput.value.trim();
         if (!query || !uploadedFile) {
-            showError(analysisStatus, 'Please upload a file and enter a query.');
+            showError(analysisStatus, 'Please upload a file and enter your query.');
             return;
         }
 
         showLoader(analysisStatus, 'Analyzing your query...');
         resultsSection.classList.add('hidden');
-        outputDiv.innerHTML = '';
+        textResult.innerHTML = '';
+        chartResult.innerHTML = '';
         downloadBtn.classList.add('hidden');
 
         const formData = new FormData();
-        formData.append("file", uploadedFile);
-        formData.append("query", query);
+        formData.append('file', uploadedFile);
+        formData.append('query', query);
 
-        fetch(`${BASE_URL}/query`, {
-            method: "POST",
+        fetch('https://ai-data-analytics-tool.onrender.com/query', {
+            method: 'POST',
             body: formData
         })
         .then(res => res.json())
         .then(data => {
+            if (data.error) {
+                showError(analysisStatus, data.error);
+                return;
+            }
+
             showSuccess(analysisStatus, 'Analysis complete!');
             latestResult = data.result;
-
-            const resultHtml = `
-                <div class="bg-gray-900 p-4 rounded-lg">
-                    <h3 class="font-semibold text-lg mb-2 text-indigo-300">Textual Analysis:</h3>
-                    <pre class="whitespace-pre-wrap text-gray-300">${latestResult}</pre>
-                </div>`;
-
-            const chartHtml = data.chart ? `<div id="chartDiv" class="bg-gray-900 p-4 rounded-lg">${data.chart}</div>` : "";
-
-            outputDiv.innerHTML = resultHtml + chartHtml;
+            textResult.innerHTML = `<pre class="whitespace-pre-wrap text-gray-300">${data.result}</pre>`;
+            if (data.chart) {
+                chartResult.innerHTML = data.chart;
+            }
             resultsSection.classList.remove('hidden');
             downloadBtn.classList.remove('hidden');
         })
-        .catch(() => showError(analysisStatus, 'Failed to analyze the query.'));
+        .catch(err => showError(analysisStatus, err.message));
     });
 
     downloadBtn.addEventListener('click', () => {
